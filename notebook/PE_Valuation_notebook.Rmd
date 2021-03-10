@@ -1,0 +1,433 @@
+---
+title: "PE_Valuation"
+author: "Arpit Gupta"
+date: "3/7/2021"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+rm(list = ls())
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(R.matlab)
+library(broom)
+library(penalized)
+library(glmnet)
+library(dummies)
+library(glmnetUtils)
+library(fastDummies)
+library(data.table)
+set.seed(123)
+
+theme_set(theme_minimal())
+options(warn = 0)
+
+
+
+# See https://github.com/arpitrage/Dividend_Strip for full code
+```
+
+
+```{r, echo = FALSE}
+# Store files here 
+
+# Div Strip Data
+div.strip.data <- readMat("/Users/agupta011/Dropbox/Research/Infrastructure/JFfinal/Code/APmodel/19742019/APoutputPEinput.mat")
+
+# PE Data
+load(file = "/Users/agupta011/Dropbox/Research/Infrastructure/JFfinal/Data/YearlyCashFlowOct20.Rda")
+
+# Merged PE + Div Strip, ready for analysis
+  load(file = "/Users/agupta011/Dropbox/Research/Infrastructure/JFfinal/Data/MergedCashFlowOct20.Rda")
+
+model.list = c("bond",              # Zero Coupon Bond
+                "cohort.stock",     # Div Strips
+                "cohort.small", 
+                "cohort.growth", 
+                "cohort.reit", 
+                "cohort.infra", 
+                "cohort.nr",
+                "cohort.value",
+                "gain.cohort.stock",     # Cap Gains Strips
+                "gain.cohort.small",
+                "gain.cohort.growth",
+                "gain.cohort.reit",
+                "gain.cohort.infra",
+                "gain.cohort.nr",
+                "gain.cohort.value")
+
+# Helper Function
+LassoCoefs <- function(lasso, model.list)
+{
+    
+    # Penalized
+    penalized.broom = coef(lasso) %>% as.matrix() 
+    factor = rownames(penalized.broom)
+    penalized.broom = penalized.broom %>% as.data.frame()
+    penalized.broom$factor = factor
+    penalized.broom = penalized.broom %>% 
+      mutate(value = s0) %>% select(-s0)
+    
+    penalized.broom.pd = penalized.broom %>%
+      separate(factor, c("model", "pd_categoryFactorQuartile"), "_pd_") %>% 
+      filter(!is.na(pd_categoryFactorQuartile))
+    
+    
+    penalized.broom.age = penalized.broom %>%
+      separate(factor, c("model", "pd_categoryFactorQuartile"), "_pd_") %>%
+      filter(is.na(pd_categoryFactorQuartile)) %>% 
+      select(-pd_categoryFactorQuartile)  %>%
+      separate(model, c("model", "AgeFactor"), "_") 
+    
+    penalized.broom.age = penalized.broom.age %>%
+      mutate(Type = ifelse(model == "bond", "Bond",
+                           ifelse(model == "cohort.small", "Small",
+                                  ifelse(model == "cohort.stock", "Stock",
+                                         ifelse(model == "cohort.value", "Value",
+                                                ifelse(model == "cohort.growth", "Growth",
+                                                       ifelse(model == "gain.cohort.small", "Small Gain",
+                                                              ifelse(model == "gain.cohort.stock", "Stock Gain",
+                                                                     ifelse(model == "cohort.reit", "REIT",
+                                                                            ifelse(model == "cohort.infra", "Infra",
+                                                                                   ifelse(model == "cohort.growth", "Growth",
+                                                                                          ifelse(model == "cohort.value", "Value",
+                                                                                                 ifelse(model == "gain.cohort.reit", "REIT Gain",
+                                                                                                        ifelse(model == "gain.cohort.infra", "Infra Gain",
+                                                                                                               ifelse(model == "gain.cohort.growth", "Growth Gain",
+                                                                                                                      ifelse(model == "cohort.nr", "Natural Resources (NR)",
+                                                                                                                             ifelse(model == "gain.cohort.nr", "NR Gain", 
+                                                                                                                                    ifelse(model == "gain.cohort.value", "Value Gain", ""))))))))))))))))))
+    
+    
+    penalized.broom.pd = penalized.broom.pd %>%
+      mutate(Type = ifelse(model == "bond", "Bond",
+                           ifelse(model == "cohort.small", "Small",
+                                  ifelse(model == "cohort.stock", "Stock",
+                                         ifelse(model == "cohort.value", "Value",
+                                                ifelse(model == "cohort.growth", "Growth",
+                                                       ifelse(model == "gain.cohort.small", "Small Gain",
+                                                              ifelse(model == "gain.cohort.stock", "Stock Gain",
+                                                                     ifelse(model == "cohort.reit", "REIT",
+                                                                            ifelse(model == "cohort.infra", "Infra",
+                                                                                   ifelse(model == "cohort.growth", "Growth",
+                                                                                          ifelse(model == "cohort.value", "Value",
+                                                                                                 ifelse(model == "gain.cohort.reit", "REIT Gain",
+                                                                                                        ifelse(model == "gain.cohort.infra", "Infra Gain",
+                                                                                                               ifelse(model == "gain.cohort.growth", "Growth Gain",
+                                                                                                                      ifelse(model == "cohort.nr", "Natural Resources (NR)",
+                                                                                                                             ifelse(model == "gain.cohort.nr", "NR Gain",
+                                                                                                                                    ifelse(model == "gain.cohort.value", "Value Gain", ""))))))))))))))))))
+    
+    
+    
+    
+    
+    
+    penalized.broom.age = penalized.broom.age %>% 
+      filter(!is.na(AgeFactor)) %>% 
+      mutate(AgeFactor = as.numeric(AgeFactor))
+    
+    
+    penalized.broom.pd = penalized.broom.pd %>%
+      mutate(pd_categoryFactorQuartile = as.numeric(pd_categoryFactorQuartile),
+             model = paste0(model, ".pd"))
+    
+    
+    penalized.broom.age.wide = penalized.broom.age %>% select(-Type) %>%
+      spread(model, value)
+    
+    penalized.broom.pd.wide = penalized.broom.pd %>% select(-Type) %>%
+      spread(model, value)
+    
+    penalized.broom.age = penalized.broom.age %>%
+      mutate(Div_or_Gain =  ifelse(grepl("Gain", Type), "Gain", "Dividend"))
+    
+    
+    penalized.broom.age = penalized.broom.age %>%
+      mutate(factor_type =  ifelse(grepl("bond", model), "Bond",
+                                   ifelse(grepl("small", model), "Small",
+                                          ifelse(grepl("stock", model), "Stock",
+                                                 ifelse(grepl("reit", model), "REIT",
+                                                        ifelse(grepl("growth", model), "Growth",
+                                                               ifelse(grepl("value", model), "Value",
+                                                                      ifelse(grepl("infra", model), "Infra",
+                                                                             ifelse(grepl("nr", model), "Natural Resources","")))))))))
+    
+    
+    
+    penalized.broom.age = penalized.broom.age %>%
+      group_by(Type) %>%
+      mutate(sum.estimates = sum(value)) %>% as.data.frame() %>%
+      filter(sum.estimates != 0) %>% select(-sum.estimates)
+    
+    
+    penalized.broom.pd = penalized.broom.pd %>%
+      group_by(Type) %>%
+      mutate(sum.estimates = sum(value)) %>% as.data.frame() %>%
+      filter(sum.estimates != 0) %>% select(-sum.estimates)
+    
+    
+  
+    final.pen = list(penalized.broom.age.wide, penalized.broom.pd.wide, penalized.broom.age, penalized.broom.pd)
+    
+    return(final.pen)  
+    
+    
+    
+  }
+
+ 
+  
+
+```
+
+## Dividend and Capital Gains Strip Exploration
+```{r}
+
+div.strip.data <- readMat("/Users/agupta011/Dropbox/Research/Infrastructure/JFfinal/Code/APmodel/19742019/APoutputPEinput.mat")
+
+growth.strip = div.strip.data$Div.cohort.growth %>%
+  as.data.frame() %>%
+  mutate(vintage = row_number()) %>%
+  gather(growth, cash.flow, 1:64) %>%
+  mutate(vintage.quarter = (vintage - 1)/4 + 1974) %>%
+  mutate(Age = as.numeric(gsub("V", "", growth)),
+         Quarter = vintage.quarter + Age * 0.25)
+
+sample = growth.strip %>% filter(vintage.quarter == 1990) %>%
+  mutate(type = "dividend")
+
+head(sample)
+
+g <- ggplot(sample, aes(x = Quarter, y = cash.flow)) + 
+  geom_line()
+g
+
+
+
+growth.gains.strip = div.strip.data$Div.Pricestrip.cohort.growth %>%
+  as.data.frame() %>%
+  mutate(vintage = row_number()) %>%
+  gather(growth, cash.flow, 1:64) %>%
+  mutate(vintage.quarter = (vintage - 1)/4 + 1974) %>%
+  mutate(Age = as.numeric(gsub("V", "", growth)),
+         Quarter = vintage.quarter + Age * 0.25)
+
+sample.gains = growth.gains.strip %>% filter(vintage.quarter == 1990) %>%
+  mutate(type = "capital gains")
+
+g <- ggplot(sample.gains, aes(x = Quarter, y = cash.flow)) + 
+  geom_line()
+g
+
+
+combined.sample = rbind(sample, sample.gains)
+
+g <- ggplot(combined.sample, aes(x = Quarter, y = cash.flow, color = factor(type))) + theme(legend.title = element_blank()) + 
+  labs(title = "Realized Capital Gains and Dividends for Growth Purchased 1990Q1",
+       y = "Cash Flow", x = "Year") + 
+  geom_line()
+g
+
+
+```
+
+
+## Venture Capital Data
+```{r}
+load(file = "/Users/agupta011/Dropbox/Research/Infrastructure/JFfinal/Data/YearlyCashFlowOct20.Rda")
+
+venture.capital = fund.quarterly %>% filter(fund.category == "Venture Capital")
+
+
+venture.capital.plot = venture.capital %>%
+  group_by(Vintage, year) %>%
+  mutate(yearly.cash = mean(net.cf.distribution.rescale, na.rm = TRUE)) %>%
+  select(Vintage, year, yearly.cash) %>%
+  unique %>% as.data.frame() %>%
+  filter(Vintage >= 1990)
+
+head(venture.capital.plot)
+
+p <- ggplot(venture.capital.plot, aes(x = year, y = yearly.cash, color = factor(Vintage))) + 
+  geom_line() + theme(legend.position = "none") + 
+  labs(title = "Venture Capital Distributions Over Time",
+       y = "Distribution Relative to a $1 Committed",
+       x = "Year")
+p
+
+```
+
+## Estimate Factor Exposure of VC
+
+# OLS 
+```{r}
+
+load(file = "/Users/agupta011/Dropbox/Research/Infrastructure/JFfinal/Data/MergedCashFlowOct20.Rda")
+
+venture.capital.df = fund.quarterly.div %>%
+  filter(fund.category == "Venture Capital")
+
+#head(venture.capital.df)
+
+venture.capital.df = venture.capital.df %>%
+  mutate(bond = 1) %>%
+         filter(!is.na(gain.cohort.growth) & !is.na(cohort.value))
+
+
+# OLS Regression (2 factor)
+ols.2 = lm(net.cf.distribution.rescale ~ 0 + AgeFactor + 
+             AgeFactor:gain.cohort.stock, data = venture.capital.df)
+
+tidy.ols.2 = tidy(ols.2)
+
+
+
+    ols.broom = tidy.ols.2 %>% mutate(AgeFactor = as.numeric(stringr::str_extract(term,"\\d+\\.*\\d*"))) %>% as.data.frame()
+
+  ols.broom = ols.broom %>% 
+      mutate(Type =   ifelse(grepl("gain.cohort.stock", term) & grepl("AgeFactor", term), "gain.cohort.stock", ifelse(grepl(":", term) == 0 & grepl("AgeFactor", term), "bond", "")))
+ # ols.broom
+  
+q <- ggplot(ols.broom, aes(x = AgeFactor, y = estimate, group = Type, color = factor(Type))) + 
+  geom_line() + theme(legend.title = element_blank()) + 
+  labs(title = "Factor Loading for VC Funds (OLS)", 
+       x = "Years from Fund Inception")
+q
+```
+
+
+# Elastic Net
+```{r, error=TRUE}
+
+# Y 
+fund.subset.y = venture.capital.df %>%
+  select(net.cf.distribution.rescale) %>%
+  as.matrix()
+
+# X
+# Age Dummies
+AgeFactor = venture.capital.df
+
+#dummies = dummy(AgeFactor$AgeFactor, sep = "_", verbose = false)
+
+dummies <- fastDummies::dummy_cols(AgeFactor$AgeFactor)
+
+
+#dummies = dummies::dummy(AgeFactor$AgeFactor, sep = "_")
+fund.subset.age <- cbind(venture.capital.df, dummies)
+
+# Cross dummies with all div vars to generate exposures
+model.list = c("bond", 
+                "cohort.stock", 
+                "cohort.small", 
+                "cohort.growth", 
+                "cohort.reit", 
+                "cohort.infra", 
+                "cohort.nr",
+                "cohort.value",
+                "gain.cohort.stock",
+                "gain.cohort.small",
+                "gain.cohort.growth",
+                "gain.cohort.reit",
+                "gain.cohort.infra",
+                "gain.cohort.nr",
+                "gain.cohort.value")
+    
+    
+for (number in 1:length(model.list)) {
+        
+        for(year in 1:16) {
+          div = model.list[number]
+          new.name = paste0(div, "_", year)
+          age.name = paste0(".data_", year)
+          
+          # Standard
+          fund.subset.age$temp = as.numeric(unlist(fund.subset.age[div])) * as.numeric(unlist(fund.subset.age[age.name]))
+          fund.subset.age = mutate(fund.subset.age, !!new.name := temp)
+          
+          
+        }
+}  
+
+# Age Subset
+fund.subset.x.age = fund.subset.age %>% 
+  select(starts_with("bond_"), 
+         starts_with("cohort.small_"),
+         starts_with("cohort.stock_"),
+         starts_with("cohort.growth_"),
+         starts_with("cohort.reit_"),
+         starts_with("cohort.infra_"),
+         starts_with("cohort.nr_"),
+         starts_with("cohort.value_"),
+         contains("gain.cohort.stock_"),
+         contains("gain.cohort.small_"),
+         contains("gain.cohort.growth_"),
+         contains("gain.cohort.reit_"),
+         contains("gain.cohort.infra_"),
+         contains("gain.cohort.nr_"),
+         contains("gain.cohort.value_")) %>% as.matrix()
+
+#head(fund.subset.x.age)
+
+
+# run the ML Model
+penalized = cva.glmnet(x = fund.subset.x.age, y = fund.subset.y, alpha = seq(0, 1, len = 11)^3, nfolds = 10, lower.limits = 0, intercept = FALSE)
+
+
+number.of.alphas.tested <- length(penalized$alpha)
+      
+cv.glmnet.dt <- data.table()
+      
+for (j in 1:number.of.alphas.tested){
+        glmnet.model <- penalized$modlist[[j]]
+        min.mse <-  min(glmnet.model$cvm)
+        min.lambda <- glmnet.model$lambda.min
+        alpha.value <- penalized$alpha[j]
+        new.cv.glmnet.dt <- data.table(alpha=alpha.value,min_mse=min.mse,min_lambda=min.lambda)
+        cv.glmnet.dt <- rbind(cv.glmnet.dt,new.cv.glmnet.dt)
+}
+      
+      best.params <- cv.glmnet.dt[which.min(cv.glmnet.dt$min_mse)]
+   
+# Best Fit Elastic Net Model
+penalized.model = glmnet(x = fund.subset.x.age,
+                         y = fund.subset.y, 
+                          lower.limits = 0,
+                         alpha = best.params$alpha,
+                         lambda =best.params$lambda,
+                         intercept = FALSE)
+
+      penalized.model <- glmnet(x = fund.subset.x.age , y = fund.subset.y,
+                                 lower.limits = 0, 
+                                 lambda = best.params$min_lambda, 
+                                 alpha = best.params$alpha, intercept = FALSE)
+
+# Visualization      
+penalized.model.truncated = glmnet(x = fund.subset.x.age,
+                         y = fund.subset.y, 
+                          lower.limits = 0,
+                         alpha = best.params$alpha,
+                         intercept = FALSE)
+      
+plot(penalized.model.truncated)
+```
+
+
+# Visualize Factor Exposure for VC
+```{r, error=TRUE}
+
+
+temp = LassoCoefs(penalized.model, model.list)
+penalized.wide.age = temp[[1]]
+  age.coef.pen = temp[[3]]
+
+#head(age.coef.pen)
+#penalized.wide.age
+
+
+g <- ggplot(data = age.coef.pen, aes(x = AgeFactor, y = value, group= factor(Type), color = factor(factor_type))) + geom_line(aes(linetype = Div_or_Gain)) + 
+  geom_point(shape = 16, fill = "white", size = 0.5, stroke = 6) + theme(legend.title = element_blank())
+g
+```
+
