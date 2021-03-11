@@ -1,7 +1,7 @@
 # Dividend_Strip
 Contains data and documentation for paper: "Valuing Private Equity Investments Strip by Strip" by Arpit Gupta and Stijn Van Nieuwerburgh
 
-There are three major sections to the code. The first section is the asset pricing model. The second section is the Private Equity model. The second section takes the output from the first section. The third section contains the Monte Carlo simulation exercises reported in Appendix A of the paper. 
+There are three major sections to the code. The first section is the asset pricing model. The second section is the Private Equity model. The second section takes the output from the first section. The third section contains the Monte Carlo simulation exercises reported in Appendix A of the paper. Also see a video tutorial at: https://youtu.be/NPp-JZLOZ8c, and associated code in the notebook folder.
 
 ---
 ## Paper and Code
@@ -12,16 +12,16 @@ The latest version of our paper and associated replication code is included in t
 ---
 ##  Section 1: Asset Pricing Model
 
-Overview: The code for the asset pricing model starts from data on macro aggregates and listed cash flow growth rates and price-dividend ratios and estimates the market prices of risk in an exponentially-affine model of the Stochastic Discount Factor. Its outputs are measures of model fit, strip cash flows, strip prices, and strip expected returns.
+<ins>Overview:</ins> The code for the asset pricing model starts from data on macro aggregates and listed cash flow growth rates and price-dividend ratios and estimates the market prices of risk in an exponentially-affine model of the Stochastic Discount Factor. Its outputs are measures of model fit, strip cash flows, strip prices, and strip expected returns.
 
 
-Location of Files: The directory Code/APmodel contains all the relevant files. The code is in matlab. There are two subdirectories. The folder Code/APmodel /19742019 estimates the AP model on a sample of quarterly data that spans the period from 1974.Q1 until 2019.Q4. this is the main set of results used in the paper. 
+<ins>Location of Files:</ins>  The directory Code/APmodel contains all the relevant files. The code is in matlab. There are two subdirectories. The folder Code/APmodel /19742019 estimates the AP model on a sample of quarterly data that spans the period from 1974.Q1 until 2019.Q4. this is the main set of results used in the paper. 
 
 The folder Code/APmodel/19902019 contains the same files and structure, but estimates the model on a shorter period from 1990.Q1 until 2019.Q4. 
 
 The folder Code/APmodel/CondCAPM contains the same files and structure, but estimates the Conditional CAPM model, a special case of our general model, on the sample from 1974.Q1 until 2019.Q4. we use this model in the Monte Carlo analysis.
 
-List of Files: 
+<ins>List of Files:</ins>  
 -	APmain.m
 -	APloaddata.m
 -	APdata.xlsx in the folder Data
@@ -39,19 +39,19 @@ List of Files:
 -	Conditional CAPM folder: CondCAPMmain.m is the main file to run the conditional CAPM
 
 
-Details on file hierarchy and how to run the code:
+<ins>Details on file hierarchy and how to run the code:</ins> 
 
-APmain.m is the main file that estimates the market prices of risk. It produces all the AP figures that are in the paper and creates the dividend and gain strip cash flow, price, and expected return data that is used as an input in the PE analysis. 
+**APmain.m** is the main file that estimates the market prices of risk. It produces all the AP figures that are in the paper and creates the dividend and gain strip cash flow, price, and expected return data that is used as an input in the PE analysis. 
 
-APmain calls the following files: APloaddata.m, Psimatrix.mat, x_guess_main.mat (or x_guess_1.mat, x_guess_2.mat, x_guess_3.mat, x_guess_4.mat, and x_guess_5.mat if not starting values are available yet), and solvenul_main.m. The file solvenul_main.m computes the function value that the MPR estimation minimizes. It calculates that function value from a set of bond and stock market moments.  The estimated market price of risk estimates are stored in the data file x_guess_main.mat.
+APmain calls the following files: **APloaddata.m**, **Psimatrix.mat**,** x_guess_main.mat** (or **x_guess_1.mat**, **x_guess_2.mat**, **x_guess_3.mat**, **x_guess_4.mat**, and **x_guess_5.mat** if not starting values are available yet), and **solvenul_main.m**. The file **solvenul_main.m** computes the function value that the MPR estimation minimizes. It calculates that function value from a set of bond and stock market moments.  The estimated market price of risk estimates are stored in the data file **x_guess_main.mat**.
 
-The figures are produced by APmain and saved in the directory Figures as eps files. The code also saves several data structures in the Figures folder that will be used when producing the paper in latex: L0mat_main.tex, L1mat_main.tex, Psimat_main.tex, Sigmat_main.tex, and TableLambda_main.tex.
-The main output file that contains all the AP output that is used as an input in the PE analysis is saved in the file APoutputPEinput.mat.
-The last part of APmain.m performs the shock exposure and shock price elasticity analysis in Appendix D of the paper. This analysis uses the auxiliary files add_functionals.m and shock_elasticity_affine.m.
+The figures are produced by APmain and saved in the directory Figures as eps files. The code also saves several data structures in the Figures folder that will be used when producing the paper in latex: **L0mat_main.tex**, **L1mat_main.tex**, **Psimat_main.tex**, **Sigmat_main.tex**, and **TableLambda_main.tex**.
+The main output file that contains all the AP output that is used as an input in the PE analysis is saved in the file **APoutputPEinput.mat**.
+The last part of APmain.m performs the shock exposure and shock price elasticity analysis in Appendix D of the paper. This analysis uses the auxiliary files **add_functionals.m** and **shock_elasticity_affine.m**.
 
-APloaddata.m loads in the aggregate data used in the asset pricing model estimation from APdata.xlsx in the folder Data. It sets up the VAR that describes the dynamics of the state variables, collected in the matrix X2.
+**APloaddata.m** loads in the aggregate data used in the asset pricing model estimation from APdata.xlsx in the folder Data. It sets up the VAR that describes the dynamics of the state variables, collected in the matrix X2.
 
-APstartval1.m is the first file in a series of files that is used to produce good starting values for the main estimation in APmain. If one were to extend the time series or apply the model to a different country, then it would be wise to start over to re-estimate the market prices of risk. This would be the first file to run in that case. APstartval1 only uses some of bond market moments to pin down a subset of market price of risk parameters, associated with the innovations to the first four variables in the VAR. In the process it also produces the estimates for the VAR companion matrix Psi and the VAR residuals eps2 which are collected in the data structure Psimatrix.mat. APstartval1.m calls the file solvenul_startval1.m, which computes the function value that the MPR estimation minimizes. It calculates that function value from a set of bond market moments.  The resulting market price of risk estimates are stored in the data file x_guess_1.mat.
+**APstartval1.m** is the first file in a series of files that is used to produce good starting values for the main estimation in APmain. If one were to extend the time series or apply the model to a different country, then it would be wise to start over to re-estimate the market prices of risk. This would be the first file to run in that case. APstartval1 only uses some of bond market moments to pin down a subset of market price of risk parameters, associated with the innovations to the first four variables in the VAR. In the process it also produces the estimates for the VAR companion matrix Psi and the VAR residuals eps2 which are collected in the data structure **Psimatrix.mat**. APstartval1.m calls the file solvenul_startval1.m, which computes the function value that the MPR estimation minimizes. It calculates that function value from a set of bond market moments.  The resulting market price of risk estimates are stored in the data file x_guess_1.mat.
 
 APstartval2.m is the second file in a series of files that is used to produce good starting values for the main estimation in APmain. It takes the MPR estimates from the first step as given by loading x_guess_1.mat and estimates a second set of MPR parameters associated with the fifth and sixth rows of the VAR, namely the price-dividend ratio and dividend growth rate for the aggregate stock market. APstartval2.m calls the file solvenul_startval2.m, which computes the function value that the estimation minimizes. It calculates that function value from a set of aggregate stock market moments.  The resulting market price of risk estimates are stored in the data file x_guess_2.mat.
 
