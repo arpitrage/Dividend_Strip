@@ -31,7 +31,7 @@ rm(list = ls())
   library(glmnet)
   library(glmnetUtils)
   library(data.table)
-  .
+  
 }
 
 ######################################### ANALYSIS ############################################################################################
@@ -49,7 +49,6 @@ rm(list = ls())
   load(file = "/Users/agupta011/Dropbox/Research/Infrastructure/JFfinal/Data/States.Rda")
   
   load(file = "/Users/agupta011/Dropbox/Research/Infrastructure/JFfinal/Data/MergedCashFlowOct20.Rda")
-  #load(file = "/Users/agupta011/Dropbox/Research/Infrastructure/Data/Clean/PD_June20.Rda")
   load(file = "/Users/agupta011/Dropbox/Research/Infrastructure/JFfinal/Data/IRRJuly20.Rda")
   
 
@@ -4204,8 +4203,7 @@ g <- ggplot(total.histogram, aes(x=total.profit, color=Model, fill=Model)) +
   facet_wrap( ~ sector.f , scales = "free", nrow = 4) + 
   scale_color_manual(values=c( "#E69F00", "#999999","#56B4E9"))+
   scale_fill_manual(values= c( "#E69F00", "#999999","#56B4E9"))+
-  ylab("") + xlab("Profit Relative to $1 Committed to Replicating Portfolio") + 
-  labs(title = "Histogram of Fund-Level Profit Relative to Replicating Portfolio") +
+  ylab("") + xlab("Profit Relative to $1 Committed to Replicating Portfolio") +
   theme_bw() + 
   theme(plot.title = element_text(size = 20),
         strip.background = element_blank(),
@@ -4276,7 +4274,6 @@ g <- ggplot(profit.time.plot %>% filter(Vintage.New <= 2010), aes(x = Vintage.Ne
         panel.spacing = unit(1.5, "lines"),
         legend.position=c(0.95, 0.95),
         legend.title = element_blank()) +
-  labs(title = "Average Fund-level profit by Vintage") + 
   ylab("RAP Profit") + xlab("Vintage") 
 g
 
@@ -4304,7 +4301,6 @@ g <- ggplot(profit.time.plot %>% filter(Vintage.New <= 2010), aes(x = Vintage.Ne
         panel.spacing = unit(1.5, "lines"),
         legend.position=c(0.95, 0.95),
         legend.title = element_blank()) +
-  labs(title = "Average Fund-level profit by Vintage") + 
   ylab("RAP Profit") + xlab("Vintage") 
 g
 
@@ -4357,7 +4353,6 @@ g <- ggplot(profit.time.plot.alt %>% filter(Vintage.New <= 2010), aes(x = Vintag
         panel.spacing = unit(1.5, "lines"),
         legend.position=c(0.95, 0.95),
         legend.title = element_blank()) +
-  labs(title = "Average Fund-level profit by Vintage") + 
   ylab("RAP Profit") + xlab("Vintage") 
 g
 
