@@ -42,13 +42,11 @@ rm(list = ls())
 
 # Load Files
 {
-  #load(file = "/scratch/ag5808/Infrastructure/Data/Clean/MergedCashFlowAug18.Rda")
   load(file = "/Users/agupta011/Dropbox/Research/Infrastructure/JFfinal/Data/ExpectedReturnOct20.Rda")
   load(file = "/Users/agupta011/Dropbox/Research/Infrastructure/JFfinal/Data/DividendStripOct20.Rda")
   
   load(file = "/Users/agupta011/Dropbox/Research/Infrastructure/JFfinal/Synthetic Data/MergedCashFlowOct20.Rda")
-  load(file = "/Users/agupta011/Dropbox/Research/Infrastructure/Data/Clean/PD_June20.Rda")
-  load(file = "/Users/agupta011/Dropbox/Research/Infrastructure/Data/Clean/IRRJuly20.Rda")
+  load(file = "/Users/agupta011/Dropbox/Research/Infrastructure/JFfinal/Data/States.Rda")
   
 
   
@@ -63,23 +61,11 @@ rm(list = ls())
   fund.quarterly.div <- fund.quarterly.div %>% 
     filter( !is.na(gain.cohort.stock) & !is.na(cohort.value)  ) 
   
-  # Add in IRRs 
-  fund.quarterly.div <- left_join(fund.quarterly.div, irr.all)
-  
+
   #Impose Vintage 2017Q4, last cash flow 2019Q2
   fund.quarterly.div = fund.quarterly.div %>%
     filter(Vintage.Quarter <= 2017.75 & Transaction.Quarter <= 2019.50)
-  
-  # Buyout: average fund in vintage
-  # buyout = fund.quarterly.div %>% filter(fund.category  == "Buyout")
-  # buyout.temp = buyout %>% filter(Vintage >= 1989) %>% select(Fund.ID, Firm.ID, Vintage, irr.preqin) %>%
-  #  unique %>% mutate(counter = 1) %>% group_by(Vintage) %>% mutate(total.funds = sum(counter)) %>%
-  #  as.data.frame()
-  # summary(buyout.temp$total.funds)
-  # sd(buyout.temp$irr.preqin, na.rm = TRUE)
-  # Numbr of Vintages
-  # CX IRR 
-  
+
   # Fix late in life infra exposure 
   fund.quarterly.div.noinfra = fund.quarterly.div %>% filter(fund.category != "Infrastructure")
   fund.quarterly.div.infra = fund.quarterly.div %>% filter(fund.category == "Infrastructure")
@@ -185,8 +171,6 @@ rm(list = ls())
            AgeFactor = as.factor(Age.Year) )
   
   
-  #portfolio.fund.yearly = portfolio.fund.yearly %>% group_by(Vintage, fund.category) %>% mutate(tvpi = sum(net.cf.distribution.rescale)) %>% as.data.frame() 
-  
   
   portfolio.fund.quarterly = fund.quarterly.div %>% 
     group_by(Vintage.Quarter, Transaction.Quarter, fund.category) %>% 
@@ -224,8 +208,6 @@ rm(list = ls())
     mutate(Fund.ID = group_indices(),
            Firm.ID = Fund.ID) %>% as.data.frame()
   
-  
-  # portfolio.fund.quarterly = portfolio.fund.quarterly %>% group_by(Vintage.Quarter, fund.category) %>% mutate(tvpi = sum(net.cf.distribution.rescale)) %>% as.data.frame() 
   
   
   set.seed(123)
@@ -274,8 +256,6 @@ rm(list = ls())
     mutate(Fund.ID = group_indices(),
            Firm.ID = Fund.ID) %>% as.data.frame()
   
-  
-  # portfolio.fund.random = portfolio.fund.random %>% group_by(Fund.ID) %>% mutate(tvpi = sum(net.cf.distribution.rescale)) %>% as.data.frame() 
   
   
   # Portfolio generate
@@ -1282,7 +1262,7 @@ tables <- "/Users/agupta011/Dropbox/Research/Infrastructure/JFfinal/Synthetic Re
     
     
     fund.subset.new.profit.fund.id = fund.subset.new.profit.adj %>% 
-      select(Vintage.Quarter, Fund.ID, Firm.ID, total.profit.adj, pme, tvpi, irr.npv, Vintage.New) %>% unique()
+      select(Vintage.Quarter, Fund.ID, Firm.ID, total.profit.adj, Vintage.New) %>% unique()
     
     fund.subset.new.profit.fund.id = left_join(fund.subset.new.profit.fund.id, profits.adj)
     
@@ -1294,7 +1274,7 @@ tables <- "/Users/agupta011/Dropbox/Research/Infrastructure/JFfinal/Synthetic Re
     
     
     # Aggregate profit
-    profit.subset = fund.subset.new.profit.fund.id %>% select(total.profit, Firm.ID, Fund.ID, Vintage.New, pme, tvpi, irr.npv) %>% 
+    profit.subset = fund.subset.new.profit.fund.id %>% select(total.profit, Firm.ID, Fund.ID, Vintage.New) %>% 
       unique %>% filter(Vintage.New <= 2010) %>% mutate(positive.profit = ifelse(total.profit > 0, "Excess Profits", " Losses"))
     
     #avg_profit.re = round(mean(profit.subset$total.profit), 3)
@@ -1354,7 +1334,7 @@ tables <- "/Users/agupta011/Dropbox/Research/Infrastructure/JFfinal/Synthetic Re
     
     
     fund.subset.new.profit.fund.id = fund.subset.new.profit.adj %>% 
-      select(Vintage.Quarter, Fund.ID, total.profit.adj, pme, tvpi, irr.npv, Vintage.New) %>% unique()
+      select(Vintage.Quarter, Fund.ID, total.profit.adj, Vintage.New) %>% unique()
     
     fund.subset.new.profit.fund.id = left_join(fund.subset.new.profit.fund.id, profits.adj)
     
@@ -1366,7 +1346,7 @@ tables <- "/Users/agupta011/Dropbox/Research/Infrastructure/JFfinal/Synthetic Re
     
     
     # Aggregate profit
-    profit.subset = fund.subset.new.profit.fund.id %>% select(total.profit, Fund.ID, Vintage.New, pme, tvpi, irr.npv) %>% 
+    profit.subset = fund.subset.new.profit.fund.id %>% select(total.profit, Fund.ID, Vintage.New) %>% 
       unique %>% mutate(positive.profit = ifelse(total.profit > 0, "Excess Profits", " Losses"))
     
     #avg_profit.re = round(mean(profit.subset$total.profit), 3)
@@ -1419,7 +1399,7 @@ tables <- "/Users/agupta011/Dropbox/Research/Infrastructure/JFfinal/Synthetic Re
     
     
     fund.subset.new.profit.fund.id = fund.subset.new.profit.adj %>% 
-      select(Vintage.Quarter, Fund.ID, total.profit.adj, all.truncated.call.profit, all.truncated.discounted.call.profit, actual.plus.residual.call.profit, pme, tvpi, irr.npv, Vintage.New) %>% unique()
+      select(Vintage.Quarter, Fund.ID, total.profit.adj, all.call, Vintage.New) %>% unique()
     
     fund.subset.new.profit.fund.id = left_join(fund.subset.new.profit.fund.id, profits.adj)
     
@@ -1427,16 +1407,10 @@ tables <- "/Users/agupta011/Dropbox/Research/Infrastructure/JFfinal/Synthetic Re
     fund.subset.new.profit.fund.id = fund.subset.new.profit.fund.id %>%
       mutate(total.profit.old = total.profit.adj + profits.adj)
     
-    # Incorporate NPV of calls
-    fund.subset.new.profit.fund.id = fund.subset.new.profit.fund.id %>%
-      mutate(total.profit = total.profit.old + 1 + all.truncated.discounted.call.profit,
-             total.profit.actual.call = total.profit.old + 1 + all.truncated.call.profit,
-             total.profit.residual =total.profit.old + 1 + actual.plus.residual.call.profit)
-    
-    
+
     
     # Aggregate profit
-    profit.subset = fund.subset.new.profit.fund.id %>% select(total.profit.old, total.profit, total.profit.actual.call, total.profit.residual, all.truncated.discounted.call.profit, all.truncated.call.profit, actual.plus.residual.call.profit, Fund.ID, Vintage.New, pme, tvpi, irr.npv) %>% 
+    profit.subset = fund.subset.new.profit.fund.id %>% select(total.profit.old, total.profit, Fund.ID, Vintage.New) %>% 
       unique %>% mutate(positive.profit = ifelse(total.profit > 0, "Excess Profits", " Losses"))
     
     #avg_profit.re = round(mean(profit.subset$total.profit), 3)
@@ -1602,7 +1576,7 @@ for (i in 1:nrow(fund.categories) ) {
           
         }
         
-        if(i != 4 & i != 5 & i != 7){
+        if(i != 4 & i != 5 & i != 7 & i != 8){
           for(pd in 1:4) {
             div = model.list7[number]
             new.name = paste0(div, "_pd_", pd)
@@ -1616,7 +1590,7 @@ for (i in 1:nrow(fund.categories) ) {
           }
         }
         
-        if(i == 4 | i == 5 | i == 7){
+        if(i == 4 | i == 5 | i == 7 | i == 8){
           
           for(pd in 2:4) {
             div = model.list7[number]
@@ -2311,78 +2285,11 @@ for (i in 1:nrow(fund.categories) ) {
 
   # First, link back dataset to main cash flows
   fund.subset.new = fund.subset %>%
-    select(Transaction.Quarter, all.truncated.discounted.call.profit, all.truncated.call.profit, actual.plus.residual.call.profit, Age.Quarter, Fund.ID, pme, tvpi, irr.npv, irr.preqin, Vintage.New, year, Vintage.Quarter, net.cf.distribution.rescale)
+    select(Transaction.Quarter, all.call, Age.Quarter, Fund.ID, Vintage.New, year, Vintage.Quarter, net.cf.distribution.rescale)
   
   
   
-  fund.subset.quarterly.new = fund.subset.quarterly %>%
-    select(Fund.ID,  Age.Quarter, Vintage.New, Vintage.Quarter,year, net.cf.distribution.rescale) %>%
-    mutate(pme = 1, irr.npv = 10) %>% 
-    mutate(tvpi = sum(net.cf.distribution.rescale),
-           all.truncated.discounted.call = -1)
-  
-  
-  
-  # Lots of profit statistics
-  {
-    
-    # Conventional Statistics
-    fund.subset.new.profit = fund.subset %>%  
-      filter(Vintage.New <= 2010)  %>%
-      select(Fund.ID, irr.npv, pme, tvpi, Vintage.New) %>% unique
-    
-    
-    
-    # Quartile Measures - TVPI 
-    fund.subset.new.profit = fund.subset.new.profit %>%
-      group_by(Vintage.New) %>%
-      mutate(q1.tvpi = quantile(tvpi, probs = 0.25),
-             q2.tvpi = quantile(tvpi, probs = 0.50),
-             q3.tvpi = quantile(tvpi, probs = 0.75)) %>%
-      as.data.frame() %>%
-      mutate(bottom.quartile.tvpi = tvpi < q1.tvpi,
-             top.quartile.tvpi = tvpi >= q3.tvpi)
-    
-    # Quartile Measures - IRR 
-    fund.subset.new.profit = fund.subset.new.profit %>%
-      group_by(Vintage.New) %>%
-      mutate(q1.irr = quantile(irr.npv, probs = 0.25, na.rm = TRUE),
-             q2.irr = quantile(irr.npv, probs = 0.50, na.rm = TRUE),
-             q3.irr = quantile(irr.npv, probs = 0.75, na.rm = TRUE)) %>%
-      as.data.frame() %>%
-      mutate(bottom.quartile.irr = irr.npv < q1.irr,
-             top.quartile.irr = irr.npv >= q3.irr)
-    
-    
-    # Quartile Measures - PME 
-    fund.subset.new.profit = fund.subset.new.profit %>%
-      group_by(Vintage.New) %>%
-      mutate(q1.pme = quantile(pme, probs = 0.25, na.rm = TRUE),
-             q2.pme = quantile(pme, probs = 0.50, na.rm = TRUE),
-             q3.pme = quantile(pme, probs = 0.75, na.rm = TRUE)) %>%
-      as.data.frame() %>%
-      mutate(bottom.quartile.pme = pme < q1.pme,
-             top.quartile.pme = pme >= q3.pme)
-    
-    
-    # TVPI Statistics
-    avg.tvpi = round(mean(fund.subset.new.profit$tvpi) - 1, 3)
-    sd.tvpi = round(sd(fund.subset.new.profit$tvpi), 3)
-
-    # IRR 
-    avg.irr = round(mean(fund.subset.new.profit  %>%  filter(!is.na(irr.npv)) %>% .$irr.npv), 3)
-    sd.irr = round(sd(fund.subset.new.profit  %>%  filter(!is.na(irr.npv)) %>% .$irr.npv), 3)
-
-    # PME Statistics
-    avg.pme = round(mean(fund.subset.new.profit$pme, na.rm= TRUE), 3)
-    sd.pme = round(sd(fund.subset.new.profit$pme, na.rm= TRUE), 3)
-
-  
-       }
-  
-
-  
-  
+ 
   
   # 2 factor
   {
@@ -2394,13 +2301,13 @@ for (i in 1:nrow(fund.categories) ) {
     fund.subset.predictions2.ols = fund.subset.predictions2.ols %>%
       mutate(net.cf.distribution.rescale = NA)
     
-    temp.profit.ols.2 = ProfitAltCall(strip.data.vintage.ols.q.2, fund.subset.predictions2.ols, fund.subset.new )
+    temp.profit.ols.2 = ProfitAlt(strip.data.vintage.ols.q.2, fund.subset.predictions2.ols, fund.subset.new )
     
     profit.subset.ols.2 = temp.profit.ols.2[[2]] %>% filter(Vintage.New <= 2010)
     fund.subset.vintage.ols.2 = temp.profit.ols.2[[3]]
     
     
-    temp.profit.pen.2 = ProfitAltCall(strip.data.vintage.pen.q.2, fund.subset.predictions2, fund.subset.new )
+    temp.profit.pen.2 = ProfitAlt(strip.data.vintage.pen.q.2, fund.subset.predictions2, fund.subset.new )
     
     profit.subset.pen.2 = temp.profit.pen.2[[2]]
     fund.subset.vintage.pen.2 = temp.profit.pen.2[[3]]
@@ -2412,21 +2319,6 @@ for (i in 1:nrow(fund.categories) ) {
     
     avg_profit.pen.2 = round(mean(profit.subset.pen.2$total.profit, na.rm = TRUE), 3)
     sd_profit.pen.2 = round(sd(profit.subset.pen.2$total.profit, na.rm = TRUE), 3)
-    
-    
-    # Uses actual sum call
-    avg_profit.ols.sumcall.2 = round(mean(profit.subset.ols.2$total.profit.actual.call, na.rm = TRUE), 3)
-    sd_profit.ols.sumcall.2 = round(sd(profit.subset.ols.2$total.profit.actual.call, na.rm = TRUE), 3)
-    
-    
-    # uses call plus residual
-    avg_profit.ols.residual.2 = round(mean(profit.subset.ols.2$total.profit.residual, na.rm = TRUE), 3)
-    sd_profit.ols.residual.2 = round(sd(profit.subset.ols.2$total.profit.residual, na.rm = TRUE), 3)
-    
-    
-    
-    avg_profit.ols.call.2 = round(mean(profit.subset.ols.2$total.profit.old, na.rm = TRUE), 3)
-    sd_profit.ols.call.2 = round(sd(profit.subset.ols.2$total.profit.old, na.rm = TRUE), 3)
     
     
     # Quartile Measures
@@ -2448,29 +2340,12 @@ for (i in 1:nrow(fund.categories) ) {
     avg_high_profit.pen.2 = round(mean(profit.subset.pen.2$is.above.10, na.rm = TRUE), 3)
     
     
-    corr.ols.2 = profit.subset.ols.2 %>% filter(!is.na(total.profit), !is.na(irr.npv)) %>% filter(Vintage.New <= 2010)  
+    corr.ols.2 = profit.subset.ols.2 %>% filter(!is.na(total.profit)) %>% filter(Vintage.New <= 2010)  
+     
+    corr.pen.2 = profit.subset.pen.2 %>% filter(!is.na(total.profit))  %>% filter(Vintage.New <= 2010) 
     
-    corr.ols.2.irr =  round(cor(corr.ols.2$total.profit, corr.ols.2$irr.npv), 2)
-    corr.ols.2.pme =  round(cor(corr.ols.2$total.profit, corr.ols.2$pme), 2)
-    corr.ols.2.tvpi = round(cor(corr.ols.2$total.profit, corr.ols.2$tvpi), 2)
-
-    
-    corr.pen.2 = profit.subset.pen.2 %>% filter(!is.na(total.profit), !is.na(irr.npv))  %>% filter(Vintage.New <= 2010 & irr.npv > -.5 & total.profit <= 5) 
-    
-    corr.pen.2.irr  = round(cor(corr.pen.2$total.profit, corr.pen.2$irr.npv), 2)
-    corr.pen.2.pme  = round(cor(corr.pen.2$total.profit, corr.pen.2$pme), 2)
-    corr.pen.2.tvpi = round(cor(corr.pen.2$total.profit, corr.pen.2$tvpi), 2)
-
-    
-    # TVPI Statistics
-    avg.tvpi.pen.2 = round(mean(corr.pen.2$tvpi, na.rm = TRUE) - 1, 3)
-    sd.tvpi.pen.2 = round(sd(corr.pen.2$tvpi, na.rm = TRUE), 3)
-    
-    avg.tvpi.ols.2 = round(mean(corr.ols.2$tvpi, na.rm = TRUE) - 1, 3)
-    sd.tvpi.ols.2 = round(sd(corr.ols.2$tvpi, na.rm = TRUE), 3)
-    
-    
-    
+      
+      
     
   }
   
@@ -2483,7 +2358,7 @@ for (i in 1:nrow(fund.categories) ) {
     
     
     # PEN 5 factor 
-    temp.profit.pen.7 = ProfitAltCall(strip.data.vintage.pen.q.7,fund.subset.predictions7, fund.subset.new )
+    temp.profit.pen.7 = ProfitAlt(strip.data.vintage.pen.q.7,fund.subset.predictions7, fund.subset.new )
     
     
     profit.subset.pen.7 = temp.profit.pen.7[[2]] %>% filter(Vintage.New <= 2010)
@@ -2504,36 +2379,15 @@ for (i in 1:nrow(fund.categories) ) {
     
     
     # Profit measures
-    # benchmark, uses NPV of calls
     avg_profit.pen.7 = round(mean(profit.subset.pen.7$total.profit, na.rm = TRUE), 3)
     sd_profit.pen.7 = round(sd(profit.subset.pen.7$total.profit, na.rm = TRUE), 3)
     
     avg_high_profit.pen.7 = round(mean(profit.subset.pen.7$is.above.10, na.rm = TRUE), 3)
     
-    # "Old" measure, uses $1 call
-    avg_profit.pen.call.7 = round(mean(profit.subset.pen.7$total.profit.old, na.rm = TRUE), 3)
-    sd_profit.pen.call.7 = round(sd(profit.subset.pen.7$total.profit.old, na.rm = TRUE), 3)
+   
+    corr.pen.7 = profit.subset.pen.7 %>% filter(!is.na(total.profit))  %>% filter(Vintage.New <= 2010) 
     
-    # Uses actual sum call
-    avg_profit.pen.sumcall.7 = round(mean(profit.subset.pen.7$total.profit.actual.call, na.rm = TRUE), 3)
-    sd_profit.pen.sumcall.7 = round(sd(profit.subset.pen.7$total.profit.actual.call, na.rm = TRUE), 3)
-    
-    
-    # uses call plus residual
-    avg_profit.pen.residual.7 = round(mean(profit.subset.pen.7$total.profit.residual, na.rm = TRUE), 3)
-    sd_profit.pen.residual.7 = round(sd(profit.subset.pen.7$total.profit.residual, na.rm = TRUE), 3)
-    
-    
-    
-    
-    
-    corr.pen.7 = profit.subset.pen.7 %>% filter(!is.na(total.profit), !is.na(irr.npv))  %>% filter(Vintage.New <= 2010 & irr.npv > -.5 & total.profit <= 5) 
-    
-    corr.pen.7.irr = round(cor(corr.pen.7$total.profit, corr.pen.7$irr.npv, use = "complete.obs"), 2)
-    corr.pen.7.pme = round(cor(corr.pen.7$total.profit, corr.pen.7$pme, use = "complete.obs"), 2)
-    corr.pen.7.tvpi = round(cor(corr.pen.7$total.profit, corr.pen.7$tvpi, use = "complete.obs"), 2)
-
-    avg.tvpi.pen.7 = round(mean(corr.pen.7$tvpi) - 1, 3)
+   
     
      
     
@@ -2564,11 +2418,10 @@ for (i in 1:nrow(fund.categories) ) {
 
   
   
-  model = rbind("TVPI", "IRR", "PME-1",  "2 factor OLS: NPV Call", "15 factor Elastic Net: NPV Call", "2 factor OLS: Sum Call", "15 factor Elastic Net: Sum Call", "2 factor OLS: Residual Call", "15 factor Elastic Net: Residual Call")
-  model2 = rbind("TVPI", "IRR", "PME-1", "2 factor OLS", "15 factor Elastic Net")
+  model = rbind("2 factor OLS", "15 factor Elastic Net")
   
-  profits.mean = rbind(avg.tvpi, avg.irr, avg.pme-1, avg_profit.ols.2, avg_profit.pen.7, avg_profit.ols.sumcall.2, avg_profit.pen.sumcall.7, avg_profit.ols.residual.2, avg_profit.pen.residual.7)
-  profits.sd = rbind(sd.tvpi, sd.irr, sd.pme , sd_profit.ols.2, sd_profit.pen.7, sd_profit.ols.sumcall.2,  sd_profit.pen.sumcall.7, sd_profit.ols.residual.2, sd_profit.pen.residual.7)
+  profits.mean = rbind(avg_profit.ols.2, avg_profit.pen.7)
+  profits.sd = rbind(sd_profit.ols.2, sd_profit.pen.7)
   
   #myname2 = paste0(fund.abbreviations[i], "_", "R2")
   myname4 = paste0(fund.abbreviations[i], "_", "r2.table")
@@ -2599,133 +2452,9 @@ for (i in 1:nrow(fund.categories) ) {
   
   
   
-  
-  #####################################  Plot: Model Comparisons -- 7 factor #####################################
-  
-  q <- ggplot(corr.pen.7, aes(x=total.profit, y=tvpi)) + 
-    geom_point() +
-    xlab("RAP from Elastic Net Model") +
-    ylab("TVPI") +
-    geom_hline(yintercept=0, linetype="dashed", color = "gray", size = 1.5) + 
-    geom_vline(xintercept=0, linetype="dashed", color = "gray", size = 1.5) + 
-    geom_smooth(method=lm) + 
-    theme_bw() + 
-    theme(plot.title = element_text(size = 18),
-          axis.title = element_text(size = 18),
-          axis.text.x = element_text(size = 18),
-          axis.text.y= element_text(size = 18),
-          legend.title = element_blank()) + 
-    labs(title = paste("RAP from Elastic Net Model against TVPI ", "Correlation: ", corr.pen.7.tvpi,sep="") )
-  q
-  
-  ggsave(paste0(wkdir, fund.abbreviations[i], "_comparison_tvpi_pen_7.eps"), width = 14.4/1.5, height = 7.24/1.5 )
-  
-  
-  q <- ggplot(corr.pen.7, aes(x=total.profit, y=irr.npv)) + 
-    geom_point() +
-    xlab("RAP from Elastic Net Model") +
-    ylab("Fund IRR") +
-    geom_hline(yintercept=0, linetype="dashed", color = "gray", size = 1.5) + 
-    geom_vline(xintercept=0, linetype="dashed", color = "gray", size = 1.5) + 
-    geom_smooth(method=lm) + 
-    theme_bw() + 
-    theme(plot.title = element_text(size = 18),
-          axis.title = element_text(size = 18),
-          axis.text.x = element_text(size = 18),
-          axis.text.y= element_text(size = 18),
-          legend.title = element_blank()) + 
-    labs(title = paste("RAP from Elastic Net Model against IRR. ", "Correlation: ", corr.pen.7.irr,sep="") )
-  q
-  
-  ggsave(paste0(wkdir, fund.abbreviations[i], "_comparison_irr_pen_7.eps"), width = 14.4/1.5, height = 7.24/1.5 )
-  
-  
-  
-  q <- ggplot(corr.pen.7, aes(x=total.profit, y=pme-1)) + 
-    geom_point() +
-    #geom_abline(intercept=0, slope=1) +
-    xlab("RAP from Elastic Net Model") +
-    ylab("PME-1") +
-    #  scale_x_continuous(breaks=seq(-1, 1, 0.5), limits = c(-1, 1)) +
-    geom_hline(yintercept=0, linetype="dashed", color = "gray", size = 1.5) + 
-    geom_vline(xintercept=0, linetype="dashed", color = "gray", size = 1.5) + 
-    geom_smooth(method=lm) +
-    theme_bw() + 
-    theme(plot.title = element_text(size = 18),
-          axis.text.x = element_text(size = 18),
-          axis.title = element_text(size = 18),
-          axis.text.y= element_text(size = 18),
-          legend.title = element_blank()) + 
-    labs(title = paste("RAP from Elastic Net Model against PME-1. ", "Correlation: ", corr.pen.7.pme,sep="") )
-  q
-  
-  ggsave(paste0(wkdir, fund.abbreviations[i], "_comparison_pme_pen_7.eps"), width = 14.4/1.5, height = 7.24/1.5 )
-  
-  
+ 
 
-  
-  #####################################  Plot: Model Comparisons -- 2 factor #####################################
-  
-  q <- ggplot(corr.ols.2, aes(x=total.profit, y=tvpi)) + 
-    geom_point() +
-    xlab("RAP from OLS Model") +
-    ylab("TVPI") +
-    geom_hline(yintercept=0, linetype="dashed", color = "gray", size = 1.5) + 
-    geom_vline(xintercept=0, linetype="dashed", color = "gray", size = 1.5) + 
-    geom_smooth(method=lm) + 
-    theme_bw() + 
-    theme(plot.title = element_text(size = 18),
-          axis.text.x = element_text(size = 18),
-          axis.title.y= element_text(size = 18),
-          axis.title.x= element_text(size = 18),
-          axis.text.y= element_text(size = 18),
-          legend.title = element_blank()) + 
-    labs(title = paste("RAP from OLS Model against TVPI. ", "Correlation: ", corr.ols.2.tvpi,sep="") )
-  q
-  
-  ggsave(paste0(wkdir, fund.abbreviations[i], "_comparison_tvpi_ols_2.eps"), width = 14.4/1.5, height = 7.24/1.5 )
-  
-  
-  q <- ggplot(corr.ols.2, aes(x=total.profit, y=pme)) + 
-    geom_point() +
-    xlab("RAP from OLS Model") +
-    ylab("PME-1") +
-    geom_hline(yintercept=0, linetype="dashed", color = "gray", size = 1.5) + 
-    geom_vline(xintercept=0, linetype="dashed", color = "gray", size = 1.5) + 
-    geom_smooth(method=lm) + 
-    geom_hline(yintercept=0, linetype="dashed", color = "gray", size = 1.5) + 
-    geom_vline(xintercept=0, linetype="dashed", color = "gray", size = 1.5) + 
-    theme_bw() + 
-    theme(plot.title = element_text(size = 18),
-          axis.text.x = element_text(size = 18),
-          axis.text.y= element_text(size = 18),
-          legend.title = element_blank()) + 
-    labs(title =paste( "RAP from OLS Model against PME-1. ", "Correlation: ", corr.ols.2.pme,sep="") )
-  q
-  
-  ggsave(paste0(wkdir, fund.abbreviations[i], "_comparison_pme_ols_2.eps"), width = 14.4/1.5, height = 7.24/1.5 )
-  
-  
-  q <- ggplot(corr.ols.2, aes(x=total.profit, y=irr.npv)) + 
-    geom_point() +
-    xlab("RAP from OLS Model") +
-    ylab("Fund IRR") +
-    geom_hline(yintercept=0, linetype="dashed", color = "gray", size = 1.5) + 
-    geom_vline(xintercept=0, linetype="dashed", color = "gray", size = 1.5) + 
-    geom_smooth(method=lm) + 
-    theme_bw() + 
-    theme(plot.title = element_text(size = 18),
-          axis.text.x = element_text(size = 18),
-          axis.title.y= element_text(size = 18),
-          axis.title.x= element_text(size = 18),
-          axis.text.y= element_text(size = 18),
-          legend.title = element_blank()) + 
-    labs(title = paste("RAP from OLS Model against IRR. ", "Correlation: ", corr.ols.2.irr,sep="") )
-  q
-  
-  ggsave(paste0(wkdir, fund.abbreviations[i], "_comparison_irr_ols_2.eps"), width = 14.4/1.5, height = 7.24/1.5 )
-  
-  
+   
   
   
   
@@ -2776,7 +2505,6 @@ for (i in 1:nrow(fund.categories) ) {
   
   
   
-  if(i != 5){
     # Horizon - 4 factor --- q; RE
     g <- ggplot(data = age.coef.ols.2, aes(x = AgeFactor , y = value, group = factor(Type), color = factor(Type))) + 
       geom_line() + geom_point(shape = 16, fill = "white", size = .5, stroke = 5)  + 
@@ -2800,34 +2528,7 @@ for (i in 1:nrow(fund.categories) ) {
     
     g
     ggsave(paste0(wkdir, fund.abbreviations[i], "_ols_2f_q.eps"), width = 14.4/1.5, height = 7.24/1.5 )
-  }
-  
-  if(i == 5){
-    # Horizon - 4 factor --- q; RE
-    g <- ggplot(data = age.coef.ols.2, aes(x = AgeFactor , y = value, group = factor(Type), color = factor(Type))) + 
-      geom_line() + geom_point(shape = 16, fill = "white", size = .5, stroke = 5)  + 
-      scale_x_continuous(breaks=seq(1,13,1),  limits = c(1, 13)) + 
-      theme_bw() + 
-      xlab("Years from Fund Inception") +
-      ylab("b Coefficient") +
-      geom_hline(yintercept = 0, lty = 2, lwd = 1, colour = "grey50") + 
-      theme(plot.title = element_text(size = 22),
-            axis.text.x= element_text(size = 22),
-            axis.text.y= element_text(size = 22),
-            axis.title =  element_text(size = 22),
-            legend.text =  element_text(size = 14),
-            legend.justification=c(1,0),
-            #axis.title.y = "b coefficient",
-            #axis.title.x = "Years from Fund Inception",
-            legend.position=c(1, 0.3),
-            legend.title = element_blank()) + 
-      labs(title = "Factor Exposureby Horizon")
-    
-    
-    g
-    ggsave(paste0(wkdir, fund.abbreviations[i], "_ols_2f_q.eps"), width = 14.4/1.5, height = 7.24/1.5 )
-  }
-  
+ 
   
   
   g <- ggplot(data = age.coef.pen.2, aes(x = AgeFactor , y = value, group = factor(Type), color = factor(Type))) + 
@@ -2962,7 +2663,7 @@ for (i in 1:nrow(fund.categories) ) {
           legend.position=c(0.95, 0.95),
           legend.title = element_blank()) +
     labs(title = "Histogram of Fund-Level Profit Relative to Replicating Portfolio", 
-         subtitle = paste0("TVPI is:", avg.tvpi.pen.7, "   Risk-Adj Profit is:", avg_profit.pen.7, "  Risk Adj Fraction above 10% is:", avg_high_profit.pen.7)) + 
+         subtitle = paste0("Risk-Adj Profit is:", avg_profit.pen.7, "  Risk Adj Fraction above 10% is:", avg_high_profit.pen.7)) + 
     ylab("Fund Count") + xlab("Profit Relative to Replicating Portfolio") 
   g
   
@@ -2989,7 +2690,7 @@ for (i in 1:nrow(fund.categories) ) {
           legend.position=c(0.95, 0.95),
           legend.title = element_blank()) +
     labs(title = "Histogram of Fund-Level Profit Relative to Replicating Portfolio", 
-         subtitle = paste0("TVPI is:", avg.tvpi.ols.2, "   Risk-Adj Profit is:", avg_profit.ols.2, "  Risk Adj Fraction above 10% is:", avg_high_profit.ols.2)) + 
+         subtitle = paste0("Risk-Adj Profit is:", avg_profit.ols.2, "  Risk Adj Fraction above 10% is:", avg_high_profit.ols.2)) + 
     ylab("Fund Count") + xlab("Profit Relative to $1 Committed to Replicating Portfolio") 
   g
   
@@ -3029,8 +2730,7 @@ for (i in 1:nrow(fund.categories) ) {
   vintage.expected.return.collapsed.pen.7 = vintage.expected.return.collapsed.pen.7 %>%
     filter(Vintage.Quarter >= 1980)
   
-  if(i != 1 & i != 3 & i != 6 & i != 4 & i != 5 & i != 7 & i != 8){
-    v <- ggplot(vintage.expected.return.collapsed.pen.7) +
+     v <- ggplot(vintage.expected.return.collapsed.pen.7) +
       geom_area(aes(x=Vintage.Quarter, y=positive)) +
       geom_area(aes(x=Vintage.Quarter, y=negative))+ theme_bw() + 
       ylab("Expected Return") + 
@@ -3047,76 +2747,10 @@ for (i in 1:nrow(fund.categories) ) {
             legend.title = element_blank())  
     v  
     ggsave(paste0(wkdir, fund.abbreviations[i], "_7f_pen_expected_return_vintage_q.eps"), width = 14.4/1.5, height = 7.24/1.5 )
-  }
   
+   
   
-  if(i == 6  ){
-    v <- ggplot(vintage.expected.return.collapsed.pen.7) +
-      geom_area(aes(x=Vintage.Quarter, y=positive)) +
-      geom_area(aes(x=Vintage.Quarter, y=negative))+ theme_bw() + 
-      ylab("Expected Return") + 
-      xlab("Vintage") +
-      scale_y_continuous(limits = c(0, 0.20), breaks = seq(0, 0.20, 0.05)) + 
-      labs(title = "Expected Return by Vintage ") + 
-      theme(plot.title = element_text(size = 18),
-            axis.title = element_text(size = 18),
-            axis.text.x= element_text(size = 18),
-            panel.border = element_blank(),
-            axis.text.y= element_text(size = 18),
-            legend.justification=c(1,1), 
-            legend.position=c(0.95, 0.95),
-            legend.title = element_blank())  
-    v  
-    ggsave(paste0(wkdir, fund.abbreviations[i], "_7f_pen_expected_return_vintage_q.eps"), width = 14.4/1.5, height = 7.24/1.5 )
-  }
-  
-  
-  
-  if(i == 1 | i == 3  ){
-    v <- ggplot(vintage.expected.return.collapsed.pen.7) +
-      geom_area(aes(x=Vintage.Quarter, y=positive)) +
-      geom_area(aes(x=Vintage.Quarter, y=negative))+ theme_bw() + 
-      ylab("Expected Return") + 
-      xlab("Vintage") +
-      scale_y_continuous(limits = c(0, 0.25), breaks = seq(0, 0.25, 0.05)) + 
-      labs(title = "Expected Return by Vintage ") + 
-      theme(plot.title = element_text(size = 18),
-            axis.title = element_text(size = 18),
-            axis.text.x= element_text(size = 18),
-            panel.border = element_blank(),
-            axis.text.y= element_text(size = 18),
-            legend.justification=c(1,1), 
-            legend.position=c(0.95, 0.95),
-            legend.title = element_blank())  
-    v  
-    ggsave(paste0(wkdir, fund.abbreviations[i], "_7f_pen_expected_return_vintage_q.eps"), width = 14.4/1.5, height = 7.24/1.5 )
-  }
-  
-  
-  
-  
-  
-  if(i == 4 | i == 5 | i == 7 | i == 8){
-    v <- ggplot(vintage.expected.return.collapsed.pen.7) +
-      geom_area(aes(x=Vintage.Quarter, y=positive)) +
-      geom_area(aes(x=Vintage.Quarter, y=negative))+ theme_bw() + 
-      scale_y_continuous(limits = c(-0.05, 0.15), breaks = seq(-0.05, 0.15, 0.05)) + 
-      ylab("Expected Return") + 
-      xlab("Vintage") +
-      labs(title = "Expected Return by Vintage ") + 
-      theme(plot.title = element_text(size = 18),
-            axis.title = element_text(size = 18),
-            axis.text.x= element_text(size = 18),
-            panel.border = element_blank(),
-            axis.text.y= element_text(size = 18),
-            legend.justification=c(1,1), 
-            legend.position=c(0.95, 0.95),
-            legend.title = element_blank())  
-    v  
-    ggsave(paste0(wkdir, fund.abbreviations[i], "_7f_pen_expected_return_vintage_q.eps"), width = 14.4/1.5, height = 7.24/1.5 )
-  }
-  
-  
+   
   
   v <- ggplot(age.expected.return.collapsed.pen.7  , aes(x = Age.Quarter, y=expected.return.new, fill = Type)) + 
     geom_area() + theme_bw() + 
@@ -3149,8 +2783,7 @@ for (i in 1:nrow(fund.categories) ) {
   vintage.expected.return.collapsed.ols.2 = vintage.expected.return.collapsed.ols.2 %>%
     filter(Vintage.Quarter >= 1980)
   
-  if(i != 1 & i != 3 & i != 6 & i != 4 & i != 5 & i != 7 & i != 8){
-    v <- ggplot(vintage.expected.return.collapsed.ols.2) +
+     v <- ggplot(vintage.expected.return.collapsed.ols.2) +
       geom_area(aes(x=Vintage.Quarter, y=positive)) +
       geom_area(aes(x=Vintage.Quarter, y=negative))+ theme_bw() + 
       scale_y_continuous(limits = c(-0.05, 0.25), breaks = seq(-0.05, 0.25, 0.05)) + 
@@ -3167,73 +2800,8 @@ for (i in 1:nrow(fund.categories) ) {
             legend.title = element_blank())  
     v  
     ggsave(paste0(wkdir, fund.abbreviations[i], "_2f_ols_expected_return_vintage_q.eps"), width = 14.4/1.5, height = 7.24/1.5 )
-  }
-  
-  
-  if(i == 6){
-    v <- ggplot(vintage.expected.return.collapsed.ols.2) +
-      geom_area(aes(x=Vintage.Quarter, y=positive)) +
-      geom_area(aes(x=Vintage.Quarter, y=negative))+ theme_bw() + 
-      scale_y_continuous(limits = c(0, 0.20), breaks = seq(0, 0.20, 0.05)) + 
-      ylab("Expected Return") + 
-      xlab("Vintage") +
-      labs(title = "Expected Return by Vintage ") + 
-      theme(plot.title = element_text(size = 18),
-            axis.title = element_text(size = 18),
-            axis.text.x= element_text(size = 18),
-            panel.border = element_blank(),
-            axis.text.y= element_text(size = 18),
-            legend.justification=c(1,1), 
-            legend.position=c(0.95, 0.95),
-            legend.title = element_blank())  
-    v  
-    ggsave(paste0(wkdir, fund.abbreviations[i], "_2f_ols_expected_return_vintage_q.eps"), width = 14.4/1.5, height = 7.24/1.5 )
-  }
-  
-  
-  
-  if(i == 1 | i == 3){
-    v <- ggplot(vintage.expected.return.collapsed.ols.2) +
-      geom_area(aes(x=Vintage.Quarter, y=positive)) +
-      geom_area(aes(x=Vintage.Quarter, y=negative))+ theme_bw() + 
-      scale_y_continuous(limits = c(0, 0.25), breaks = seq(0, 0.25, 0.05)) + 
-      ylab("Expected Return") + 
-      xlab("Vintage") +
-      labs(title = "Expected Return by Vintage ") + 
-      theme(plot.title = element_text(size = 18),
-            axis.title = element_text(size = 18),
-            axis.text.x= element_text(size = 18),
-            panel.border = element_blank(),
-            axis.text.y= element_text(size = 18),
-            legend.justification=c(1,1), 
-            legend.position=c(0.95, 0.95),
-            legend.title = element_blank())  
-    v  
-    ggsave(paste0(wkdir, fund.abbreviations[i], "_2f_ols_expected_return_vintage_q.eps"), width = 14.4/1.5, height = 7.24/1.5 )
-  }
-  
-  
-  
-  if(i == 4 | i == 5 | i == 7 | i == 8){
-    v <- ggplot(vintage.expected.return.collapsed.ols.2) +
-      geom_area(aes(x=Vintage.Quarter, y=positive)) +
-      geom_area(aes(x=Vintage.Quarter, y=negative))+ theme_bw() + 
-      scale_y_continuous(limits = c(-0.05, 0.15), breaks = seq(-0.05, 0.15, 0.05)) + 
-      ylab("Expected Return") + 
-      xlab("Vintage") +
-      labs(title = "Expected Return by Vintage ") + 
-      theme(plot.title = element_text(size = 18),
-            axis.title = element_text(size = 18),
-            axis.text.x= element_text(size = 18),
-            panel.border = element_blank(),
-            axis.text.y= element_text(size = 18),
-            legend.justification=c(1,1), 
-            legend.position=c(0.95, 0.95),
-            legend.title = element_blank())  
-    v  
-    ggsave(paste0(wkdir, fund.abbreviations[i], "_2f_ols_expected_return_vintage_q.eps"), width = 14.4/1.5, height = 7.24/1.5 )
-  }
-  
+   
+   
   
   
   
@@ -3249,9 +2817,8 @@ for (i in 1:nrow(fund.categories) ) {
     mutate(Model = "Elastic Net Full Factor") %>%
     mutate(avg.profit = mean(total.profit))
   
-  multiple.historam.pen.7 = rbind(profit.subset.ols.2, profit.subset.pen.7) %>% filter(total.profit <= 2 & total.profit >= -1)
-  #multiple.historam.pen.7 = rbind(profit.subset.pen.2, profit.subset.pen.7) %>% filter(total.profit <= 2 )
-  
+  multiple.historam.pen.7 = rbind(profit.subset.ols.2, profit.subset.pen.7) 
+
   
   # Save as separate names so as to stitch together
   myname_histogram = paste0(fund.abbreviations[i], "_", "histogram")
@@ -3271,7 +2838,7 @@ for (i in 1:nrow(fund.categories) ) {
     scale_fill_manual(values= c( "#E69F00", "#999999","#56B4E9"))+
     ylab("") + xlab("Profit Relative to $1 Committed to Replicating Portfolio") + 
     labs(title = "Histogram of Fund-Level Profit Relative to Replicating Portfolio",
-         subtitle = paste0("TVPI is:", avg.tvpi, "   Risk-Adj Profit is:", avg_profit.pen.7, "  Risk Adj Fraction above 10% is:", avg_high_profit.pen.7)) +
+         subtitle = paste0("Risk-Adj Profit is:", avg_profit.pen.7, "  Risk Adj Fraction above 10% is:", avg_high_profit.pen.7)) +
     theme_bw() + 
     theme(plot.title = element_text(size = 20),
           plot.subtitle = element_text(size = 16),
@@ -3921,7 +3488,7 @@ r2.table = r2.table %>%
 
 
 
-r2.table[2,1] <- "IRR (%)"
+#r2.table[2,1] <- "IRR (%)"
 
 tab.latex = r2.table %>%
   gt() %>%
@@ -4022,7 +3589,7 @@ r2.table.alt = left_join(rs_r2.table, df_r2.table)  %>%
          in_profits.sd = paste0("(", in_profits.sd, ")"),
          nr_profits.sd = paste0("(", nr_profits.sd, ")"))
 
-r2.table.alt[2,1] <- "IRR (%)"
+#r2.table.alt[2,1] <- "IRR (%)"
 
 tab.latex.alt = r2.table.alt %>%
   #select(-rs_persistence, -df_persistence, -in_persistence, -nr_persistence) %>%

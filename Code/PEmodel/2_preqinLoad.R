@@ -6,6 +6,7 @@ library(stargazer)
 library(statar)
 library(broom)
 library(Hmisc)
+library(zoo)
 
 
 # Functions including IRR 
@@ -481,5 +482,230 @@ fund.quarterly = fund.quarterly.initial
 save(fund.quarterly, file = "/Users/agupta011/Dropbox/Research/Infrastructure/JFfinal/Data/YearlyCashFlowOct20.Rda")
 
 # load(file = "/Users/agupta011/Dropbox/Research/Infrastructure/JFfinal/Data/YearlyCashFlowOct20.Rda")
+
+
+
+######################################### GENERATE IRRs ############################################################################################
+
+
+
+
+
+
+
+
+# Generates both quarterly and yearly cash flow files
+
+######################################### LOAD PREQIN ############################################################################################
+df = read.csv("/Users/agupta011/Dropbox/Research/Infrastructure/JFfinal/Data/Preqin_PE_CashFlow_202042800_20200428031312.csv", stringsAsFactors = FALSE, header=T, sep=",")    
+return.data <- read.csv("/Users/agupta011/Dropbox/Research/Infrastructure/JFfinal/Data/MASTER_Preqin_Returns.csv", stringsAsFactors = FALSE, header=T, sep=",")   
+return.data <- return.data %>% select(Firm.ID, Fund.ID, pme, irr, altpme)
+
+# Format Data - key, date and amount
+df <- df %>%
+  mutate(Transaction.Date       = as.Date(Transaction.Date, format = "%m/%d/%y"),
+         Transaction.Amount     = gsub(" - ", NA, Transaction.Amount),
+         Transaction.Amount     = gsub(" ", "", Transaction.Amount),
+         Transaction.Amount     = as.numeric(gsub(",", "", Transaction.Amount) ) )%>%
+  filter(!is.na(Transaction.Amount) & !is.na(Transaction.Date))
+
+df$year_stub  = substr(df$Transaction.Date, 1, 4)
+df$month_stub = substr(df$Transaction.Date, 6, 7)
+df$day_stub   = substr(df$Transaction.Date, 9, 11)
+
+df$date.char = paste0(df$month_stub, "-", 1, "-", df$year_stub)
+df$monthly.date <- mdy(df$date.char)
+
+#df$date = format(as.Date(df$Transaction.Date), "%Y-%m")
+
+# Remove NAs in Fund Size
+df = df %>% mutate(Fund.Size = Fund.Size..mn.USD.)
+df = df %>% mutate(Fund.Size = ifelse(is.na(Fund.Size), 0, Fund.Size))
+
+
+# Create weighted cash flows based on fund size
+df = df %>% mutate(weighted.cash = Transaction.Amount/10 * Fund.Size,
+                   Transaction.Month = month(Transaction.Date),
+                   Transaction.Year = year(Transaction.Date))
+
+
+df = df %>% mutate(Quarter = ifelse(Transaction.Month %in% c(1, 2, 3), 0, 
+                                    ifelse(Transaction.Month %in% c(4, 5, 6), .25,
+                                           ifelse(Transaction.Month %in% c(7, 8, 9), .50, .75))))
+
+df = df %>% mutate(Transaction.Quarter = Transaction.Year + Quarter) 
+
+
+# Vintage Quarter Origination
+df = df %>% group_by(Fund.ID) %>% mutate(Vintage.Quarter = min(Transaction.Quarter)) %>% as.data.frame()
+
+
+
+# Here, separate out the NAV Amounts 
+nav = df %>% filter(Transaction.Category  == "Value") %>%  
+  group_by(Fund.ID) %>% group_by(Fund.ID, Transaction.Quarter) %>% 
+  mutate(avg.value = mean(Transaction.Amount, na.rm = TRUE)/(10*10^6)) %>%
+  select(Fund.ID, avg.value, Transaction.Quarter) %>% unique %>% as.data.frame()
+
+
+
+
+
+pecf = df %>% as.data.frame() %>% filter(Transaction.Category  != "Value")
+pecf <- pecf %>%
+  select(Firm.ID, Fund.ID, Fund.Name, Firm.Name, Vintage, Vintage.Quarter, Fund.Size, Fund.Status, Transaction.Date, Transaction.Amount, Transaction.Quarter, Transaction.Year, Transaction.Category, Industries, Category.Type, weighted.cash) %>%
+  rename(firm.name = Firm.Name, 
+         fund.name = Fund.Name) %>%
+  unique
+
+
+# Adjusted here to use + or - amounts to determine call/distributions; not declared type
+pecf = pecf %>% mutate(Call.Amount = ifelse(Transaction.Amount < 0, Transaction.Amount, 0),
+                       Distribution.Amount = ifelse(Transaction.Amount > 0, Transaction.Amount, 0))
+
+
+
+pecf = pecf  %>%
+  mutate(net.cf.rescale = Transaction.Amount / (10 * 10^6),
+         net.cf.distribution.rescale = Distribution.Amount / (10 * 10^6),
+         net.cf.call.rescale = Call.Amount / (10 * 10^6)) %>% as.data.frame()
+
+
+####### Generate IRRS ###########
+
+
+load(file = "/Users/agupta011/Dropbox/Research/Infrastructure/JFfinal/Data/DividendStripOct20.Rda")
+
+# Keep only first $1 capital called
+bond.price = price.strip.quarterly.feb %>% select(Transaction.Quarter, Vintage.Quarter, price.bond.feb)
+
+# Year 16 discount factor 
+bond.price = bond.price %>%
+  group_by(Vintage.Quarter) %>%
+  mutate(is.last.bond.discount = ifelse(Transaction.Quarter == max(Transaction.Quarter), price.bond.feb, 0),
+         last.bond.discount = max(is.last.bond.discount)) %>%
+  as.data.frame()
+
+
+# Add in bond prices
+pecf = left_join(pecf, bond.price)
+pecf = pecf %>%
+  group_by(Fund.ID) %>%
+  mutate(last.bond.discount.infill = max(last.bond.discount, na.rm = TRUE),
+         price.bond.feb = ifelse(is.na(price.bond.feb), 1, price.bond.feb)) %>%
+  as.data.frame()
+
+pecf = pecf %>%
+  mutate(last.bond.discount.infill = ifelse(is.infinite(last.bond.discount.infill), 1, last.bond.discount.infill))
+
+# Discounted calls
+pecf = pecf %>% group_by(Fund.ID) %>%
+  mutate(discounted.call = net.cf.call.rescale * price.bond.feb,
+         all.discounted.call = sum(discounted.call),
+         all.call = sum(net.cf.call.rescale)) %>% as.data.frame()
+
+# Measure truncated calls
+pecf = pecf %>%
+  group_by(Fund.ID) %>%
+  arrange(Transaction.Date) %>%
+  mutate(cumulative.calls = cumsum(net.cf.call.rescale)) %>%
+  as.data.frame() %>%
+  mutate(incremental.call = cumulative.calls - net.cf.call.rescale,
+         excess.calls = ifelse(cumulative.calls < -1, 1, 0),
+         diff.from.limit = ifelse(net.cf.call.rescale < 0, -1 - incremental.call, 0),
+         net.cf.call.rescale.truncated = ifelse(excess.calls == 0, net.cf.call.rescale, pmin(diff.from.limit, 0) ),
+         discounted.truncated.call = net.cf.call.rescale.truncated * price.bond.feb)
+
+pecf = pecf %>%
+  group_by(Fund.ID) %>%
+  mutate(all.truncated.call = sum(net.cf.call.rescale.truncated),
+         all.truncated.discounted.call = sum(discounted.truncated.call)) %>%
+  as.data.frame()
+
+
+# Measure that last bit of call added to end
+pecf = pecf %>%
+  mutate(residual.call = 1 + all.truncated.call,     # amount different from 1 that gets called
+         residual.call.discounted = residual.call * last.bond.discount.infill, # discount that 
+         actual.plus.residual.call = -1 + residual.call.discounted)
+
+
+
+# pecf.alt: version with only $1 capital calls; pecf.1.call
+#pecf.alt = pecf %>% mutate(Transaction.Amount = ifelse(Transaction.Amount < 0, 0, Transaction.Amount))
+#pecf.alt = pecf.alt %>% group_by(Fund.ID) %>% arrange(Transaction.Date) %>%
+#  mutate(Transaction.Amount = ifelse(row_number() == 1, Transaction.Amount - 10000000, Transaction.Amount)) %>%
+#  as.data.frame()
+
+pecf.1.call = pecf %>% mutate(Transaction.Amount = net.cf.distribution.rescale) %>%
+  group_by(Fund.ID) %>% arrange(Transaction.Date) %>%
+  mutate(Transaction.Amount = ifelse(row_number() == 1, Transaction.Amount - 1, Transaction.Amount)) %>%
+  as.data.frame()
+
+
+
+
+
+# IRR 1 -- using actual cash flows
+# Modify this to be up to $1 of calls
+# Call Components
+
+
+
+# (1) -- USING ACTUAL CASH FLOWS
+pecf = pecf %>%
+  mutate(Transaction.Amount = ifelse(Call.Amount < 0, net.cf.call.rescale.truncated, net.cf.distribution.rescale))
+
+irr = calcIRR(pecf)
+irr = irr %>% mutate(irr.actual.truncated.cash = irrCalc) %>% select(Fund.ID, irr.actual.truncated.cash) %>% unique
+
+
+# (2) -- USING NPV CASH FLOWS
+pecf.npv = pecf %>% mutate(Transaction.Amount = net.cf.distribution.rescale) %>%
+  group_by(Fund.ID) %>% arrange(Transaction.Date) %>%
+  mutate(Transaction.Amount = ifelse(row_number() == 1, Transaction.Amount + all.truncated.discounted.call, Transaction.Amount)) %>%
+  as.data.frame()
+
+irr.npv = calcIRR(pecf.npv)
+irr.npv = irr.npv %>% mutate(irr.npv = irrCalc) %>% select(Fund.ID, irr.npv, all.truncated.discounted.call) %>% unique
+
+
+# (3) -- Using actual sum of calls at time 0 
+pecf.actual = pecf %>% mutate(Transaction.Amount = net.cf.distribution.rescale) %>%
+  group_by(Fund.ID) %>% arrange(Transaction.Date) %>%
+  mutate(Transaction.Amount = ifelse(row_number() == 1, Transaction.Amount + all.truncated.call, Transaction.Amount)) %>%
+  as.data.frame()
+
+irr.actual = calcIRR(pecf.actual)
+irr.actual = irr.actual %>% mutate(irr.actual = irrCalc) %>% select(Fund.ID, irr.actual, all.truncated.call) %>% unique
+
+
+
+#  (4) - IRR with actual call + npv of future pulled back
+pecf.residual = pecf %>% mutate(Transaction.Amount = net.cf.distribution.rescale) %>%
+  group_by(Fund.ID) %>% arrange(Transaction.Date) %>%
+  mutate(Transaction.Amount = ifelse(row_number() == 1, Transaction.Amount + actual.plus.residual.call, Transaction.Amount)) %>%
+  as.data.frame()
+
+irr.residual = calcIRR(pecf.residual)
+irr.residual = irr.residual %>% mutate(irr.residual = irrCalc) %>% select(Fund.ID, irr.residual, actual.plus.residual.call) %>% unique
+
+
+irr.all = left_join(irr, irr.npv) %>%
+  left_join(irr.actual) %>%
+  left_join(irr.residual)
+
+irr.all = irr.all %>%
+  mutate(all.truncated.discounted.call.profit = all.truncated.discounted.call,
+         all.truncated.call.profit = all.truncated.call, 
+         actual.plus.residual.call.profit = actual.plus.residual.call) %>%
+  select(-all.truncated.discounted.call, -all.truncated.call, -actual.plus.residual.call)
+
+save(irr.all, file = "/Users/agupta011/Dropbox/Research/Infrastructure/JFfinal/Data/IRRJuly20.Rda")
+
+
+
+
+
 
 

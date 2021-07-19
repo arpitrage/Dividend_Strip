@@ -53,7 +53,8 @@ synthetic.pe.full = synthetic.pe.full %>%
          Vintage = Vintage.Quarter) %>%
   filter(Transaction.Quarter.Age != 0)
 
-fund.quarterly = synthetic.pe.full
+fund.quarterly = synthetic.pe.full %>% select(-irr.preqin, -pme, -tvpi)
+
 
 save(fund.quarterly, file = "/Users/agupta011/Dropbox/Research/Infrastructure/JFfinal/Synthetic Data/YearlyCashFlowOct20.Rda")
 

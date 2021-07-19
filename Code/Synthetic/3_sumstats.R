@@ -32,10 +32,8 @@ fund.quarterly.div = fund.quarterly.div %>%
          VintageYear = floor(Vintage))
 
   fund.quarterly.div = fund.quarterly.div %>% filter(Vintage >= 1981, Vintage <= 2017)
-  summary.profile = fund.quarterly.div %>% select(Fund.ID, Fund.Size, fund.category, Vintage) %>% unique 
-  #fund.quarterly.div = fund.quarterly.div %>% mutate(outlier = Firm.ID == 346 & Fund.ID == 871) %>% filter(outlier == 0)
+  summary.profile = fund.quarterly.div %>% select(Fund.ID, fund.category, Vintage) %>% unique 
   nrow(summary.profile)
-  # new -> [1] 4219
   summaryPD = fund.quarterly.div %>% select(pd_category.4.quarterly, Vintage) %>% group_by(Vintage)  %>% 
     mutate(avg.pd = round(mean(pd_category.4.quarterly, na.rm = TRUE), 2)) %>% as.data.frame() %>% select(avg.pd, Vintage) %>% unique %>% arrange(Vintage) %>% filter(!is.na(Vintage)) 
   
@@ -71,38 +69,6 @@ fund.quarterly.div = fund.quarterly.div %>%
 
  
   
-  # Panel B: By Size
-  table.1.B = summary.profile %>%
-    group_by(Vintage, fund.category) %>%
-    tally(wt = Fund.Size) %>% spread(fund.category, n) 
-  
-  
-  table.1.B[] <- round(table.1.B[], 0) 
-  table.1.B[is.na(table.1.B)] <- 0
-  
-  table.1.B = table.1.B %>% as.data.frame() %>% mutate(Total = rowSums(.) - Vintage)
-  
-  table.1.B = table.1.B %>%
-    select(Vintage, Buyout, `Venture Capital`, `Real Estate`, Infrastructure, Restructuring, `Fund of Funds`, `Debt Fund`, `Natural Resources`, Total)
-  
-  table.1.B.second = table.1.B %>% 
-    select(-Vintage) %>%
-    mutate_all(funs(prettyNum(., big.mark=",")))
-  
-  table.1.B.first = table.1.B %>% select(Vintage)
-  
-  table.1.B.new = cbind(table.1.B.first, table.1.B.second)
-
-  agg.aum = summary.profile %>% summarise(sum = sum(Fund.Size))
-  
-  table.1.B.xtable <- xtable(table.1.B.new)
-  digits(table.1.B.xtable) <- 0
-  
-  print.xtable(table.1.B.xtable,   include.rownames=FALSE, floating = FALSE,file =  paste0(tables, "Table1_PanelB.tex"))
-  
-  agg.aum
-  # 4103015
-
   
 ##################################### Cash Flow Profiles ##################################### 
   
